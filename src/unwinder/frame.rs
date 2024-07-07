@@ -99,7 +99,14 @@ impl Frame {
                     let value = unsafe { (address as usize as *const usize).read_unaligned() };
                     result = eval.resume_with_memory(Value::Generic(value as _))?;
                 }
-                _ => unreachable!(),
+                EvaluationResult::RequiresCallFrameCfa => {
+                    let value = self.cfa(ctx)?;
+                    result = eval.resume_with_call_frame_cfa(value as u64)?;
+                }
+                r => {
+                    log::error!("{r:?}");
+                    unreachable!()
+                },
             }
         }
 
@@ -130,7 +137,7 @@ impl Frame {
         ctx[Arch::SP] = ctx[Arch::SP].wrapping_add(size as usize);
     }
 
-    pub fn unwind(&self, ctx: &Context) -> Result<Context, gimli::Error> {
+    fn cfa(&self, ctx: &Context) -> Result<usize, gimli::Error> {
         let row = &self.row;
         let mut new_ctx = ctx.clone();
 
@@ -140,6 +147,15 @@ impl Frame {
             }
             CfaRule::Expression(expr) => self.evaluate_expression(ctx, expr)?,
         };
+
+        Ok(cfa)
+    }
+
+    pub fn unwind(&self, ctx: &Context) -> Result<Context, gimli::Error> {
+        let row = &self.row;
+        let mut new_ctx = ctx.clone();
+
+        let cfa = self.cfa(ctx)?;
 
         new_ctx[Arch::SP] = cfa as _;
         new_ctx[Arch::RA] = 0;
