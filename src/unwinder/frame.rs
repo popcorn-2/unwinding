@@ -199,6 +199,9 @@ impl Frame {
                 new_ctx[Arch::SP] = *base_pointer;
                 new_ctx[Register(6)] = unsafe { *(*base_pointer as *const usize) };
                 new_ctx[Arch::RA] = unsafe { *(*base_pointer as *const usize).offset(1) };
+                trace!("rsp = {:#x}", new_ctx[Arch::SP]);
+                trace!("rbp = {:#x}", new_ctx[Register(6)]);
+                trace!("rip = {:#x}", new_ctx[Arch::RA]);
                 Ok(new_ctx)
             }
         }
@@ -247,7 +250,7 @@ impl Frame {
     pub fn is_signal_trampoline(&self) -> bool {
         match self {
             Self::Fde(frame) => frame.fde_result.fde.is_signal_trampoline(),
-            _ => todo!(),
+            Self::BasePointer(_) => false,
         }
     }
 }
