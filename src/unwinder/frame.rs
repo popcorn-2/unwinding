@@ -152,6 +152,7 @@ impl Frame {
 
         #[warn(non_exhaustive_omitted_patterns)]
         for (reg, rule) in row.registers() {
+            trace!("{reg:?} = {rule:?}");
             let value = match *rule {
                 RegisterRule::Undefined | RegisterRule::SameValue => ctx[*reg],
                 RegisterRule::Offset(offset) => unsafe {
