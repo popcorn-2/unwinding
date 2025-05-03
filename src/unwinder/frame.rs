@@ -48,7 +48,7 @@ struct FdeFrame {
 #[derive(Debug)]
 pub enum Frame {
     Fde(FdeFrame),
-    BasePointer,
+    BasePointer(usize),
 }
 
 impl Frame {
@@ -72,7 +72,7 @@ impl Frame {
             Some(v) => v,
             None => {
                 trace!("no fde found - trying base pointer val {:#x}", ctx[Register(6)]); // fixme: non x86_64
-                return Ok(None);
+                return Ok(Some(Self::BasePointer(ctx[Register(6)])));
             },
         };
         let mut unwinder = UnwindContext::<_, StoreOnStack>::new_in();
