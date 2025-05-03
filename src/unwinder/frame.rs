@@ -265,7 +265,7 @@ fn is_canonical_addr(addr: usize) -> bool {
     #[cfg(target_arch = "x86_64")]
     {
         let mask = addr & 0xffff_8000_0000_0000;
-        mask == 0 || mask == 0xffff_8000_0000_0000;
+        mask == 0 || mask == 0xffff_8000_0000_0000
     }
     #[cfg(not(target_arch = "x86_64"))] { true }
 }
