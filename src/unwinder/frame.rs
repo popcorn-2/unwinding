@@ -4,6 +4,8 @@ use gimli::{
 #[cfg(feature = "dwarf-expr")]
 use gimli::{Evaluation, EvaluationResult, Location, Value};
 
+use log::trace;
+
 use super::arch::*;
 use super::find_fde::{self, FDEFinder, FDESearchResult};
 use crate::abi::PersonalityRoutine;
@@ -47,8 +49,11 @@ impl Frame {
     pub fn from_context(ctx: &Context, signal: bool) -> Result<Option<Self>, gimli::Error> {
         let mut ra = ctx[Arch::RA];
 
+        trace!("return address {ra:#x}");
+
         // Reached end of stack
         if ra == 0 {
+            trace!("end of stack");
             return Ok(None);
         }
 
