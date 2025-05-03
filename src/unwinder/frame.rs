@@ -197,8 +197,14 @@ impl Frame {
             Self::BasePointer(base_pointer) => {
                 let mut new_ctx = ctx.clone();
                 new_ctx[Arch::SP] = *base_pointer;
-                new_ctx[Register(6)] = unsafe { *(*base_pointer as *const usize) };
-                new_ctx[Arch::RA] = unsafe { *(*base_pointer as *const usize).offset(1) };
+
+                if *base_pointer != 0 {
+                    new_ctx[Register(6)] = unsafe { *(*base_pointer as *const usize) };
+                    new_ctx[Arch::RA] = unsafe { *(*base_pointer as *const usize).offset(1) };
+                } else {
+                    new_ctx[Arch::RA] = 0;
+                }
+                
                 trace!("rsp = {:#x}", new_ctx[Arch::SP]);
                 trace!("rbp = {:#x}", new_ctx[Register(6)]);
                 trace!("rip = {:#x}", new_ctx[Arch::RA]);
