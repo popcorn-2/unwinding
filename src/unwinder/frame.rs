@@ -48,6 +48,7 @@ struct FdeFrame {
 #[derive(Debug)]
 pub enum Frame {
     Fde(FdeFrame),
+    BasePointer,
 }
 
 impl Frame {
@@ -70,7 +71,7 @@ impl Frame {
         let fde_result = match find_fde::get_finder().find_fde(ra as _) {
             Some(v) => v,
             None => {
-                trace!("no fde found");
+                trace!("no fde found - trying base pointer val {:#x}", ctx[Register(6)]); // fixme: non x86_64
                 return Ok(None);
             },
         };
