@@ -198,7 +198,7 @@ impl Frame {
                 let mut new_ctx = ctx.clone();
                 new_ctx[Arch::SP] = *base_pointer;
 
-                if *base_pointer != 0 {
+                if *base_pointer != 0 && is_canonical_addr(*base_pointer) {
                     new_ctx[Register(6)] = unsafe { *(*base_pointer as *const usize) };
                     new_ctx[Arch::RA] = unsafe { *(*base_pointer as *const usize).offset(1) };
                 } else {
@@ -259,4 +259,13 @@ impl Frame {
             Self::BasePointer(_) => false,
         }
     }
+}
+
+fn is_canonical_addr(addr: usize) -> bool {
+    #[cfg(target_arch = "x86_64")]
+    {
+        let mask = addr & 0xffff_8000_0000_0000;
+        mask == 0 || mask == 0xffff_8000_0000_0000;
+    }
+    #[cfg(not(target_arch = "x86_64"))] { true }
 }
