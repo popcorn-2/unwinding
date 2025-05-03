@@ -64,7 +64,10 @@ impl Frame {
 
         let fde_result = match find_fde::get_finder().find_fde(ra as _) {
             Some(v) => v,
-            None => return Ok(None),
+            None => {
+                trace!("no fde found");
+                return Ok(None);
+            },
         };
         let mut unwinder = UnwindContext::<_, StoreOnStack>::new_in();
         let row = fde_result
