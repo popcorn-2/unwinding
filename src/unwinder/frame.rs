@@ -40,9 +40,14 @@ impl<R: gimli::Reader> gimli::EvaluationStorage<R> for StoreOnStack {
 }
 
 #[derive(Debug)]
-pub struct Frame {
+struct FdeFrame {
     fde_result: FDESearchResult,
     row: UnwindTableRow<usize, StoreOnStack>,
+}
+
+#[derive(Debug)]
+pub enum Frame {
+    Fde(FdeFrame),
 }
 
 impl Frame {
@@ -80,9 +85,11 @@ impl Frame {
             )?
             .clone();
 
-        Ok(Some(Self { fde_result, row }))
+        Ok(Some(Self::Fde(FdeFrame { fde_result, row })))
     }
+}
 
+impl FdeFrame {
     #[cfg(feature = "dwarf-expr")]
     fn evaluate_expression(
         &self,
@@ -133,76 +140,107 @@ impl Frame {
     ) -> Result<usize, gimli::Error> {
         Err(gimli::Error::UnsupportedEvaluation)
     }
+}
 
+impl Frame {
     pub fn adjust_stack_for_args(&self, ctx: &mut Context) {
-        let size = self.row.saved_args_size();
-        ctx[Arch::SP] = ctx[Arch::SP].wrapping_add(size as usize);
+        match self {
+            Self::Fde(frame) => {
+                let size = frame.row.saved_args_size();
+                ctx[Arch::SP] = ctx[Arch::SP].wrapping_add(size as usize);
+            },
+            _ => todo!(),
+        }
     }
 
     pub fn unwind(&self, ctx: &Context) -> Result<Context, gimli::Error> {
-        let row = &self.row;
-        let mut new_ctx = ctx.clone();
+        match self {
+            Self::Fde(frame) => {
+                let row = &frame.row;
+                let mut new_ctx = ctx.clone();
 
-        let cfa = match *row.cfa() {
-            CfaRule::RegisterAndOffset { register, offset } => {
-                ctx[register].wrapping_add(offset as usize)
-            }
-            CfaRule::Expression(expr) => self.evaluate_expression(ctx, expr)?,
-        };
+                let cfa = match *row.cfa() {
+                    CfaRule::RegisterAndOffset { register, offset } => {
+                        ctx[register].wrapping_add(offset as usize)
+                    }
+                    CfaRule::Expression(expr) => frame.evaluate_expression(ctx, expr)?,
+                };
 
-        new_ctx[Arch::SP] = cfa as _;
-        new_ctx[Arch::RA] = 0;
+                new_ctx[Arch::SP] = cfa as _;
+                new_ctx[Arch::RA] = 0;
 
-        #[warn(non_exhaustive_omitted_patterns)]
-        for (reg, rule) in row.registers() {
-            trace!("{reg:?} = {rule:?}");
-            let value = match *rule {
-                RegisterRule::Undefined | RegisterRule::SameValue => ctx[*reg],
-                RegisterRule::Offset(offset) => unsafe {
-                    *((cfa.wrapping_add(offset as usize)) as *const usize)
-                },
-                RegisterRule::ValOffset(offset) => cfa.wrapping_add(offset as usize),
-                RegisterRule::Register(r) => ctx[r],
-                RegisterRule::Expression(expr) => {
-                    let addr = self.evaluate_expression(ctx, expr)?;
-                    unsafe { *(addr as *const usize) }
+                #[warn(non_exhaustive_omitted_patterns)]
+                for (reg, rule) in row.registers() {
+                    trace!("{reg:?} = {rule:?}");
+                    let value = match *rule {
+                        RegisterRule::Undefined | RegisterRule::SameValue => ctx[*reg],
+                        RegisterRule::Offset(offset) => unsafe {
+                            *((cfa.wrapping_add(offset as usize)) as *const usize)
+                        },
+                        RegisterRule::ValOffset(offset) => cfa.wrapping_add(offset as usize),
+                        RegisterRule::Register(r) => ctx[r],
+                        RegisterRule::Expression(expr) => {
+                            let addr = frame.evaluate_expression(ctx, expr)?;
+                            unsafe { *(addr as *const usize) }
+                        }
+                        RegisterRule::ValExpression(expr) => frame.evaluate_expression(ctx, expr)?,
+                        RegisterRule::Architectural => unreachable!(),
+                        RegisterRule::Constant(value) => value as usize,
+                        _ => unreachable!(),
+                    };
+                    new_ctx[*reg] = value;
                 }
-                RegisterRule::ValExpression(expr) => self.evaluate_expression(ctx, expr)?,
-                RegisterRule::Architectural => unreachable!(),
-                RegisterRule::Constant(value) => value as usize,
-                _ => unreachable!(),
-            };
-            new_ctx[*reg] = value;
-        }
 
-        Ok(new_ctx)
+                Ok(new_ctx)
+            },
+            _ => todo!(),
+        }
     }
 
     pub fn bases(&self) -> &BaseAddresses {
-        &self.fde_result.bases
+        match self {
+            Self::Fde(frame) => &frame.fde_result.bases,
+            _ => todo!(),
+        }
     }
 
     pub fn personality(&self) -> Option<PersonalityRoutine> {
-        self.fde_result
-            .fde
-            .personality()
-            .map(|x| unsafe { deref_pointer(x) })
-            .map(|x| unsafe { core::mem::transmute(x) })
+        match self {
+            Self::Fde(frame) => {
+                frame.fde_result
+                     .fde
+                     .personality()
+                     .map(|x| unsafe { deref_pointer(x) })
+                     .map(|x| unsafe { core::mem::transmute(x) })
+            },
+            _ => todo!(),
+        }
     }
 
     pub fn lsda(&self) -> usize {
-        self.fde_result
-            .fde
-            .lsda()
-            .map(|x| unsafe { deref_pointer(x) })
-            .unwrap_or(0)
+        match self {
+            Self::Fde(frame) => {
+                frame.fde_result
+                     .fde
+                     .lsda()
+                     .map(|x| unsafe { deref_pointer(x) })
+                     .unwrap_or(0)
+            }
+            _ => todo!(),
+        }
     }
 
     pub fn initial_address(&self) -> usize {
-        self.fde_result.fde.initial_address() as _
+        match self {
+            Self::Fde(frame) => frame.fde_result.fde.initial_address() as _,
+            _ => todo!(),
+        }
     }
 
     pub fn is_signal_trampoline(&self) -> bool {
-        self.fde_result.fde.is_signal_trampoline()
+        match self {
+            Self::Fde(frame) => frame.fde_result.fde.is_signal_trampoline(),
+            _ => todo!(),
+        }
     }
 }
