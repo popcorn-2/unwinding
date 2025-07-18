@@ -10,6 +10,8 @@ pub unsafe fn get_unlimited_slice<'a>(start: *const u8) -> &'a [u8] {
     unsafe { core::slice::from_raw_parts(start as *const _, len) }
 }
 
+#[cfg_attr(feature = "kasan", sanitize(address = "off"))]
+#[cfg_attr(feature = "kasan", inline(never))]
 pub unsafe fn deref_pointer(ptr: Pointer) -> usize {
     match ptr {
         Pointer::Direct(x) => x as _,
