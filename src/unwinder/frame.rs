@@ -92,8 +92,8 @@ impl Frame {
 
 impl FdeFrame {
     #[cfg(feature = "dwarf-expr")]
-    #[cfg_attr(feature = "kasan", no_sanitize(address))]
-	#[cfg_attr(feature = "kasan", inline(never))]
+    #[cfg_attr(kasan, no_sanitize(address))]
+	#[cfg_attr(kasan, inline(never))]
     fn evaluate_expression(
         &self,
         ctx: &Context,
@@ -156,8 +156,8 @@ impl Frame {
         }
     }
 
-    #[cfg_attr(feature = "kasan", sanitize(address = "off"))]
-	#[cfg_attr(feature = "kasan", inline(never))]
+    #[cfg_attr(kasan, sanitize(address = "off"))]
+	#[cfg_attr(kasan, inline(never))]
     pub fn unwind(&self, ctx: &Context) -> Result<Context, gimli::Error> {
         match self {
             Self::Fde(frame) => {

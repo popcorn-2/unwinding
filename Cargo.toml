@@ -48,10 +48,12 @@ default = ["unwinder", "dwarf-expr", "hide-trace", "fde-phdr-dl", "fde-registry"
 rustc-dep-of-std = ["dep:core", "gimli/rustc-dep-of-std"]
 libc = ["dep:libc"]
 spin = ["dep:spin"]
-kasan = []
 
 [profile.release]
 debug = true
 
 [package.metadata.docs.rs]
 features = ["panic-handler"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kasan, values(none()))'] }

@@ -19,7 +19,7 @@
     feature(core_intrinsics)
 )]
 #![cfg_attr(feature = "panic-handler", feature(thread_local))]
-#![cfg_attr(feature = "kasan", feature(sanitize))]
+#![cfg_attr(kasan, feature(sanitize))]
 #![no_std]
 
 #[cfg(feature = "alloc")]
