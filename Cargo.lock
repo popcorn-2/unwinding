@@ -11,27 +11,36 @@ dependencies = [
 ]
 
 [[package]]
-name = "compiler_builtins"
-version = "0.1.139"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7925a77545f37a18e152a4aeaeb9a220309022067cafcfa2ecebe9ec55d36ccb"
+name = "forced_unwind"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "unwinding",
+]
 
 [[package]]
 name = "gimli"
-version = "0.31.1"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
+checksum = "1033caf0b349c518623b5396bfb2cf0bddf44f0306d543a250e5743297aafd10"
 dependencies = [
- "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
 
 [[package]]
 name = "libc"
-version = "0.2.164"
+version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "433bfe06b8c75da9b2e3fbea6e5329ff87748f0b144ef75306e674c3f6f7c13f"
+checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+
+[[package]]
+name = "multiple_action"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "unwinding",
+]
 
 [[package]]
 name = "panic_abort_no_debuginfo"
@@ -54,9 +63,9 @@ checksum = "aa9c45b374136f52f2d6311062c7146bff20fec063c3f5d46a410bd937746955"
 
 [[package]]
 name = "spin"
-version = "0.9.8"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
+checksum = "8abadc99fd9c7bbb7d0ca2b31d72a067d0c0dcd7aad25ab8cac71ba91417694b"
 
 [[package]]
 name = "std_catch_exception"
@@ -76,9 +85,8 @@ dependencies = [
 
 [[package]]
 name = "unwinding"
-version = "0.2.6"
+version = "0.2.10"
 dependencies = [
- "compiler_builtins",
  "gimli",
  "libc",
  "log",

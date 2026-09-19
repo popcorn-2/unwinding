@@ -9,7 +9,7 @@ This library serves two purposes:
 1. Provide a pure Rust alternative to libgcc_eh or libunwind.
 2. Provide easier unwinding support for `#![no_std]` targets.
 
-Currently supports x86_64, x86, RV64, RV32 and AArch64.
+Currently supports x86_64, x86, RV64, RV32, AArch64, and LoongArch64.
 
 ## Unwinder
 
@@ -32,7 +32,7 @@ If you want to use the unwinder for other Rust (C++, or any programs that utiliz
 cd cdylib
 cargo build --release
 # Test the unwinder using rustc. Why not :)
-LD_PRELOAD=`../target/release/libunwinding_dyn.so` rustc +nightly -Ztreat-err-as-bug
+LD_PRELOAD=`../target/release/libunwinding_dyn.so` rustc -Ztreat-err-as-bug
 ```
 
 If you want to link to the unwinder in a Rust binary, simply add
@@ -43,6 +43,8 @@ extern crate unwinding;
 ## Personality and other utilities
 
 The library also provides Rust personality function. This can work with the unwinder described above or with a different unwinder. This can be handy if you are working on a `#![no_std]` binary/staticlib/cdylib and you still want unwinding support.
+
+Note that these features depend on nightly features.
 
 Here are the feature gates related:
 
@@ -55,7 +57,7 @@ Here are the feature gates related:
 | panic-handler | No      | Provides `#[panic_handler]`. Provides similar behaviour on panic to std, with `RUST_BACKTRACE` support as well. Stack trace won't have symbols though. Depends on libc. |
 | system-alloc  | No      | Provides a global allocator which calls `malloc` and friends. Provided for convience. |
 
-If you are writing a `#![no_std]` program, simply enable `personality`, `panic-handler` and `system-alloc` in addition to the defaults, you instantly obtains the ability to do unwinding! An example is given in the [`example/` folder](example).
+If you are writing a `#![no_std]` program, simply enable `personality`, `panic-handler` and `system-alloc` in addition to the defaults, you instantly obtains the ability to do unwinding! An example is given in the [here](test_crates/throw_and_catch/src/main.rs).
 
 ## Baremetal
 

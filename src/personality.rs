@@ -4,8 +4,8 @@
 // https://docs.rs/gimli/0.25.0/src/gimli/read/cfi.rs.html
 
 use core::mem;
-use gimli::{constants, NativeEndian};
 use gimli::{EndianSlice, Error, Pointer, Reader};
+use gimli::{NativeEndian, constants};
 
 use crate::abi::*;
 use crate::arch::*;
@@ -14,9 +14,20 @@ use crate::util::*;
 #[derive(Debug)]
 enum EHAction {
     None,
+    /// Destructors should be executed when stack unwinds.
     Cleanup(usize),
+    /// Stack unwind should be stopped as the exception is going to be caught by `catch_unwind`.
     Catch(usize),
+    /// Stack unwind should be stopped for termination (`UnwindAction::Terminate`).
+    ///
+    /// Note that due to inlining the landing pad can execute destructors before terminating. So
+    /// this is different from `Terminate`.
+    ///
+    /// Handling of this is mostly identical to `Catch`; except that Rust frames that have no
+    /// destructors but only `UnwindAction::Terminate` is considered as plain-old-frame (POF) and
+    /// forced unwind is allowed to unwind past it; so this is treated as `None` during forced unwind.
     Filter(usize),
+    /// Process should be terminated as the call site does not permit unwinding.
     Terminate,
 }
 
@@ -46,7 +57,14 @@ fn parse_encoded_pointer(
         constants::DW_EH_PE_textrel => _Unwind_GetTextRelBase(unwind_ctx) as u64,
         constants::DW_EH_PE_datarel => _Unwind_GetDataRelBase(unwind_ctx) as u64,
         constants::DW_EH_PE_funcrel => _Unwind_GetRegionStart(unwind_ctx) as u64,
-        constants::DW_EH_PE_aligned => return Err(Error::UnsupportedPointerEncoding),
+        constants::DW_EH_PE_aligned => {
+            // DW_EH_PE_aligned means the same as DW_EH_PE_absptr, but that the address is naturally
+            // aligned.  In reality it's not being emitted (and libunwind doesn't support it) but
+            // it's not tricky to implement so do it anyway.
+            let ptr = input.slice().as_ptr() as usize;
+            input.skip(ptr.next_multiple_of(size_of::<usize>()) - ptr)?;
+            0
+        }
         _ => unreachable!(),
     };
 
@@ -133,7 +151,18 @@ fn find_eh_action(
 
                 action_table.skip((cs_action - 1) as _)?;
                 let ttype_index = action_table.read_sleb128()?;
-                return Ok(if ttype_index == 0 {
+                let next_action = action_table.read_sleb128()?;
+                return Ok(if next_action != 0 {
+                    // We observed multiple actions. As Rust does not have exception specification, this
+                    // indicates that we have at least 2 of "cleanup", "catch" and "filter", so we should
+                    // catch all exceptions.
+                    //
+                    // Note that even for the case of "cleanup" + "filter", decoding them as "catch" is
+                    // fine: "filter" behaves identically to "catch" except for forced unwind; in case of
+                    // forced unwind, hitting a "cleanup" landing pad is UB as it indicates that we're
+                    // unwinding past a non-POF Rust frame.
+                    EHAction::Catch(lpad)
+                } else if ttype_index == 0 {
                     EHAction::Cleanup(lpad)
                 } else if ttype_index > 0 {
                     EHAction::Catch(lpad)
@@ -185,10 +214,10 @@ unsafe fn rust_eh_personality(
             EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
                 _Unwind_SetGR(
                     unwind_ctx,
-                    Arch::UNWIND_DATA_REG.0 .0 as _,
+                    Arch::UNWIND_DATA_REG.0.0 as _,
                     exception as usize,
                 );
-                _Unwind_SetGR(unwind_ctx, Arch::UNWIND_DATA_REG.1 .0 as _, 0);
+                _Unwind_SetGR(unwind_ctx, Arch::UNWIND_DATA_REG.1.0 as _, 0);
                 _Unwind_SetIP(unwind_ctx, lpad);
                 UnwindReasonCode::INSTALL_CONTEXT
             }

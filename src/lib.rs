@@ -1,7 +1,4 @@
 #![doc = include_str!("../README.md")]
-// lang_items is an internal feature. `internal_features` lint is added recently
-// so also allow unknown lints to prevent warning in older nightly versions.
-#![allow(unknown_lints)]
 #![cfg_attr(
     any(
         feature = "personality",
@@ -16,7 +13,13 @@
     feature(lang_items)
 )]
 #![cfg_attr(
-    any(feature = "panicking", feature = "panic-handler-dummy"),
+    any(
+        feature = "panicking",
+        all(
+            any(feature = "panic", feature = "panic-handler-dummy"),
+            not(feature = "libc")
+        )
+    ),
     feature(core_intrinsics)
 )]
 #![cfg_attr(feature = "panic-handler", feature(thread_local))]
